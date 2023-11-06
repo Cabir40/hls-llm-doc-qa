@@ -29,7 +29,7 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Creating a dropdown widget for model selection, as well as defining the file paths where our PDFs are stored, where we want to cache the HuggingFace model downloads, and where we want to persist our vectorstore.
+# MAGIC Creating a dropdown widget for model selection, as well as defining the file paths where our PDFs are stored, where we want to cache the Spark NLP model downloads, and where we want to persist our vectorstore.
 
 # COMMAND ----------
 
@@ -161,12 +161,13 @@ display(documents)
 
 # COMMAND ----------
 
-from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import Chroma
+from johnsnowlabs.llm import embedding_retrieval
 
-hf_embed = HuggingFaceEmbeddings(model_name=embeddings_model)
+embeddings =  embedding_retrieval.JohnSnowLabsLangChainEmbedder('en.embed_sentence.bert_base_uncased')
+
 sample_query = "What is cystic fibrosis?"
-db = Chroma.from_documents(collection_name="hls_docs", documents=documents, embedding=hf_embed, persist_directory=db_persist_path)
+db = Chroma.from_documents(collection_name="hls_docs", documents=documents, embedding=embeddings, persist_directory=db_persist_path)
 db.persist()
 
 # COMMAND ----------
@@ -183,9 +184,10 @@ db.persist()
 # COMMAND ----------
 
 # Start here to load a previously-saved DB
-from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import Chroma
+from johnsnowlabs.llm import embedding_retrieval
 
 db_persist_path = db_persist_path
-hf_embed = HuggingFaceEmbeddings(model_name=embeddings_model)
-db = Chroma(collection_name="hls_docs", embedding_function=hf_embed, persist_directory=db_persist_path)
+embeddings =  embedding_retrieval.JohnSnowLabsLangChainEmbedder('en.embed_sentence.bert_base_uncased')
+
+db = Chroma(collection_name="hls_docs", embedding_function=embeddings, persist_directory=db_persist_path)
