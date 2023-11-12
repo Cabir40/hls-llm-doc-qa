@@ -45,9 +45,6 @@ dbutils.widgets.text("Vectorstore_Persist_Path", "/dbfs/tmp/langchain_hls/db")
 # publicly accessible bucket with PDFs for this demo
 dbutils.widgets.text("Source_Documents", "s3a://db-gtm-industry-solutions/data/hls/llm_qa/")
 
-# where you want the Hugging Face models to be temporarily saved
-hf_cache_path = "/dbfs/tmp/cache/hf"
-
 # COMMAND ----------
 
 #get widget values
