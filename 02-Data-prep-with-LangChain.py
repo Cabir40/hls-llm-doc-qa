@@ -36,9 +36,8 @@
 # where you want the PDFs to be saved in your environment
 dbutils.widgets.text("PDF_Path", "/dbfs/tmp/langchain_hls/pdfs")
 
-# which embeddings model from Hugging Face 🤗  you would like to use; for biomedical applications we have been using this model recently
-# also worth trying this model for embeddings for comparison: pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb
-dbutils.widgets.text("Embeddings_Model", "pritamdeka/S-PubMedBert-MS-MARCO")
+# which embeddings model from Spark NLP
+dbutils.widgets.text("Embeddings_Model", "en.embed_sentence.bert_base_uncased")
 
 # where you want the vectorstore to be persisted across sessions, so that you don't have to regenerate
 dbutils.widgets.text("Vectorstore_Persist_Path", "/dbfs/tmp/langchain_hls/db")
@@ -61,7 +60,6 @@ embeddings_model = dbutils.widgets.get("Embeddings_Model")
 
 import os
 # Optional, but helpful to avoid re-downloading the weights repeatedly. Set to any `/dbfs` path.
-os.environ['TRANSFORMERS_CACHE'] = hf_cache_path
 #os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
 
 # COMMAND ----------
@@ -141,19 +139,63 @@ len(docs)
 # MAGIC Here we are using a text splitter from LangChain to split our PDFs into manageable chunks. This is for a few reasons, primarily:
 # MAGIC - LLMs (currently) have a limited context length. MPT-7b-Instruct by default can only accept 2048 tokens (roughly words) in the prompt, although it can accept 4096 with a small settings change. This is rapidly changing, though, so keep an eye on it.
 # MAGIC - When we create embeddings for these documents, an NLP model (sentence transformer) creates a numerical representation (a high-dimensional vector) of that chunk of text that captures the semantic meaning of what is being embedded. If we were to embed large documents, the NLP model would need to capture the meaning of the entire document in one vector; by splitting the document, we can capture the meaning of chunks throughout that document and retrieve only what is most relevant.
-# MAGIC - In this case, the embeddings model we use can except a very limited number of tokens. The default one we have selected in this notebook, [
-# MAGIC S-PubMedBert-MS-MARCO](https://huggingface.co/pritamdeka/S-PubMedBert-MS-MARCO), has also been finetuned on a PubMed dataset, so it is particularly good at generating embeddings for medical documents.
-# MAGIC - More info on embeddings: [Hugging Face: Getting Started with Embeddings](https://huggingface.co/blog/getting-started-with-embeddings)
+# MAGIC - In this case, the embeddings model we use can except a very limited number of tokens. The default one we have selected in this notebook, [bert_base_uncased](https://sparknlp.org/2020/08/25/bert_base_uncased.html)
+# MAGIC - More info on embeddings: [Spark NLP: Embeddings](https://nlp.johnsnowlabs.com/models?task=Embeddings)
 
 # COMMAND ----------
 
 # For PDFs we need to split them for embedding:
-from langchain.text_splitter import TokenTextSplitter
+from johnsnowlabs import nlp
 
+def split_hay_doc(pipe,doc):
+  from  langchain.schema.document import Document
+  return [Document(page_content=split, metadata = doc.metadata) for split in pipe.annotate(doc.page_content)['splits'] ]
+
+def split_hay_docs(pipe, docs):
+    return [split for doc in docs for split in split_hay_doc(pipe, doc)]
+
+
+class JslCharSplitter():
+  def __init__(self,
+               chunk_overlap=2,
+               chunk_size=20,
+               explode_splits=True,
+               keep_seperators=True,
+               patterns_are_regex=False,
+               split_patterns=['\n\n', '\n', ' ', ''],
+               trim_whitespace=True):
+
+    spark = nlp.start()
+
+    documentAssembler = nlp.DocumentAssembler()\
+        .setInputCol("text")\
+        .setOutputCol("document")
+
+    textSplitter = nlp.DocumentCharacterTextSplitter() \
+        .setInputCols(["document"]) \
+        .setOutputCol("splits") \
+        .setChunkSize(chunk_size) \
+        .setChunkOverlap(chunk_overlap) \
+        .setExplodeSplits(explode_splits)\
+        .setPatternsAreRegex(patterns_are_regex)\
+        .setSplitPatterns(split_patterns)\
+        .setTrimWhitespace(trim_whitespace)
+        # .setKeepSeperators(keep_seperators)\
+
+    self.pipe =  nlp.LightPipeline(nlp.PipelineModel(
+        stages=[
+        documentAssembler,
+        textSplitter
+        ]))
+
+  def split_documents(self,docs):
+    return split_hay_docs(self.pipe, docs)
+
+# COMMAND ----------
 # this is splitting into chunks based on a fixed number of tokens
 # the embeddings model we use below can take a maximum of 128 tokens (and truncates beyond that) so we keep our chunks at that max size
-text_splitter = TokenTextSplitter(chunk_size=128, chunk_overlap=32)
-documents = text_splitter.split_documents(docs)
+jsl_splitter = JslCharSplitter(chunk_size=1000, chunk_overlap=0)
+texts = jsl_splitter.split_documents(documents)
 
 # COMMAND ----------
 

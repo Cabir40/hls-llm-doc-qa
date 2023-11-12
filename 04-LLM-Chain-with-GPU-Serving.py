@@ -37,16 +37,11 @@
 # which LLM do you want to use? Grab the name of the model you deployed in step 04 from Databricks Model Serving
 dbutils.widgets.text('model_name_from_model_serving',"llama-2-7b-chat")
 
-# which embeddings model from Hugging Face 🤗  you would like to use; for biomedical applications we have been using this model recently
-# also worth trying this model for embeddings for comparison: pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb
-dbutils.widgets.text("Embeddings_Model", "pritamdeka/S-PubMedBert-MS-MARCO")
+# embeddings model from Spark NLP 
+dbutils.widgets.text("Embeddings_Model", "en.embed_sentence.bert_base_uncased")
 
 # where was the vectorstore persisted in the previous notebook?
 dbutils.widgets.text("Vectorstore_Persist_Path", "/dbfs/tmp/langchain_hls/db")
-
-# where you want the Hugging Face models to be temporarily saved
-hf_cache_path = "/dbfs/tmp/cache/hf"
-
 # COMMAND ----------
 
 #get widget values
