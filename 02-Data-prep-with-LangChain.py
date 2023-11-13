@@ -192,7 +192,7 @@ class JslCharSplitter():
 # this is splitting into chunks based on a fixed number of tokens
 # the embeddings model we use below can take a maximum of 128 tokens (and truncates beyond that) so we keep our chunks at that max size
 jsl_splitter = JslCharSplitter(chunk_size=1000, chunk_overlap=0)
-texts = jsl_splitter.split_documents(documents)
+texts = jsl_splitter.split_documents(docs)
 
 # COMMAND ----------
 
@@ -203,7 +203,7 @@ display(documents)
 from langchain.vectorstores import Chroma
 from johnsnowlabs.llm import embedding_retrieval
 
-embeddings =  embedding_retrieval.JohnSnowLabsLangChainEmbedder('en.embed_sentence.bert_base_uncased')
+embeddings =  embedding_retrieval.JohnSnowLabsLangChainEmbedder(embeddings_model)
 
 sample_query = "What is cystic fibrosis?"
 db = Chroma.from_documents(collection_name="hls_docs", documents=documents, embedding=embeddings, persist_directory=db_persist_path)
@@ -211,6 +211,18 @@ db.persist()
 
 # COMMAND ----------
 
+# query it
+sample_query = "What is cystic fibrosis?"
+similar_docs = db.similarity_search(sample_query)
+
+# print results
+print(similar_docs[0].page_content)
+
+# COMMAND ----------
+
+display(similar_docs)
+
+# COMMAND ----------
 # MAGIC %md
 # MAGIC ## Building a `langchain` Chain
 # MAGIC
@@ -227,6 +239,6 @@ from langchain.vectorstores import Chroma
 from johnsnowlabs.llm import embedding_retrieval
 
 db_persist_path = db_persist_path
-embeddings =  embedding_retrieval.JohnSnowLabsLangChainEmbedder('en.embed_sentence.bert_base_uncased')
+embeddings =  embedding_retrieval.JohnSnowLabsLangChainEmbedder(embeddings_model)
 
 db = Chroma(collection_name="hls_docs", embedding_function=embeddings, persist_directory=db_persist_path)

@@ -67,7 +67,7 @@ from langchain.vectorstores import Chroma
 from johnsnowlabs.llm import embedding_retrieval
 
 db_persist_path = db_persist_path
-embeddings =  embedding_retrieval.JohnSnowLabsLangChainEmbedder('en.embed_sentence.bert_base_uncased')
+embeddings =  embedding_retrieval.JohnSnowLabsLangChainEmbedder(embeddings_model)
 
 db = Chroma(collection_name="hls_docs", embedding_function=embeddings, persist_directory=db_persist_path)
 
